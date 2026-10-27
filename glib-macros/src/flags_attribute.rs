@@ -1,8 +1,8 @@
 // Take a look at the license at the top of the repository in the LICENSE file.
 
+use crate::abort::abort_call_site;
 use heck::{ToKebabCase, ToUpperCamelCase};
 use proc_macro2::TokenStream;
-use proc_macro_error::abort_call_site;
 use quote::{quote, quote_spanned};
 use syn::{
     punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, DeriveInput, Ident,

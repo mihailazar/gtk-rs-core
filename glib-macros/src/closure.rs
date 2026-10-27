@@ -1,7 +1,7 @@
 // Take a look at the license at the top of the repository in the LICENSE file.
 
+use crate::abort::abort;
 use proc_macro2::{Ident, Span, TokenStream};
-use proc_macro_error::abort;
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{ext::IdentExt, spanned::Spanned, Token};
 
@@ -132,7 +132,7 @@ impl syn::parse::Parse for Capture {
             }
             if name.to_string().contains('.') {
                 abort!(
-                    name.span(),
+                    @span name.span(),
                     "`{}`: Field accesses are not allowed as is, you must rename it!",
                     name
                 );
@@ -162,11 +162,17 @@ impl syn::parse::Parse for Closure {
                 let capture = input.parse::<Capture>()?;
                 if capture.kind == CaptureKind::Watch {
                     if let Some(existing) = captures.iter().find(|c| c.kind == CaptureKind::Watch) {
-                        abort!(
-                            capture.start,
-                            "Only one `@watch` capture is allowed per closure";
-                            note = existing.start => "Previous `@watch` found here"
-                        );
+                        {
+                            let mut err = syn::Error::new(
+                                capture.start,
+                                "Only one `@watch` capture is allowed per closure",
+                            );
+                            err.combine(syn::Error::new(
+                                existing.start,
+                                "Previous `@watch` found here",
+                            ));
+                            crate::abort::raise(err);
+                        }
                     }
                 }
                 captures.push(capture);

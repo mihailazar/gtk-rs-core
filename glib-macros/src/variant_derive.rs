@@ -1,8 +1,8 @@
 // Take a look at the license at the top of the repository in the LICENSE file.
 
+use crate::abort::abort;
 use heck::ToKebabCase;
 use proc_macro::TokenStream;
-use proc_macro_error::abort;
 use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, Type};
 

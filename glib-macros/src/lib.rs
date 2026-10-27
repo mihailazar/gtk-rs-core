@@ -15,11 +15,11 @@ mod shared_boxed_derive;
 mod value_delegate_derive;
 mod variant_derive;
 
+mod abort;
 mod utils;
 
 use flags_attribute::AttrInput;
 use proc_macro::TokenStream;
-use proc_macro_error::proc_macro_error;
 use syn::{parse_macro_input, DeriveInput};
 use utils::{parse_nested_meta_items_from_stream, NestedMetaItem};
 
@@ -283,9 +283,8 @@ use utils::{parse_nested_meta_items_from_stream, NestedMetaItem};
 /// }
 /// ```
 #[proc_macro]
-#[proc_macro_error]
 pub fn clone(item: TokenStream) -> TokenStream {
-    clone::clone_inner(item)
+    crate::abort::guard(move || clone::clone_inner(item))
 }
 
 /// Macro for creating a [`Closure`] object. This is a wrapper around [`Closure::new`] that
@@ -423,9 +422,8 @@ pub fn clone(item: TokenStream) -> TokenStream {
 /// assert_eq!(closure.invoke::<String>(&[]), "Hello Moon!");
 /// ```
 #[proc_macro]
-#[proc_macro_error]
 pub fn closure(item: TokenStream) -> TokenStream {
-    closure::closure_inner(item, "new")
+    crate::abort::guard(move || closure::closure_inner(item, "new"))
 }
 
 /// The same as [`closure!`](crate::closure!) but uses [`Closure::new_local`] as a constructor.
@@ -434,9 +432,8 @@ pub fn closure(item: TokenStream) -> TokenStream {
 ///
 /// [`Closure::new_local`]: ../glib/closure/struct.Closure.html#method.new_local
 #[proc_macro]
-#[proc_macro_error]
 pub fn closure_local(item: TokenStream) -> TokenStream {
-    closure::closure_inner(item, "new_local")
+    crate::abort::guard(move || closure::closure_inner(item, "new_local"))
 }
 
 /// Derive macro for register a rust enum in the glib type system and derive the
@@ -461,11 +458,12 @@ pub fn closure_local(item: TokenStream) -> TokenStream {
 ///
 /// [`glib::Value`]: ../glib/value/struct.Value.html
 #[proc_macro_derive(Enum, attributes(enum_type, enum_value))]
-#[proc_macro_error]
 pub fn enum_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let gen = enum_derive::impl_enum(&input);
-    gen.into()
+    crate::abort::guard(move || {
+        let input = parse_macro_input!(input as DeriveInput);
+        let gen = enum_derive::impl_enum(&input);
+        gen.into()
+    })
 }
 
 /// Attribute macro for defining flags using the `bitflags` crate.
@@ -499,22 +497,23 @@ pub fn enum_derive(input: TokenStream) -> TokenStream {
 ///
 /// [`glib::Value`]: ../glib/value/struct.Value.html
 #[proc_macro_attribute]
-#[proc_macro_error]
 pub fn flags(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let mut name = NestedMetaItem::<syn::LitStr>::new("name")
-        .required()
-        .value_required();
+    crate::abort::guard(move || {
+        let mut name = NestedMetaItem::<syn::LitStr>::new("name")
+            .required()
+            .value_required();
 
-    if let Err(e) = parse_nested_meta_items_from_stream(attr.into(), &mut [&mut name]) {
-        return e.to_compile_error().into();
-    }
+        if let Err(e) = parse_nested_meta_items_from_stream(attr.into(), &mut [&mut name]) {
+            return e.to_compile_error().into();
+        }
 
-    let attr_meta = AttrInput {
-        enum_name: name.value.unwrap(),
-    };
-    let input = parse_macro_input!(item as DeriveInput);
-    let gen = flags_attribute::impl_flags(attr_meta, &input);
-    gen.into()
+        let attr_meta = AttrInput {
+            enum_name: name.value.unwrap(),
+        };
+        let input = parse_macro_input!(item as DeriveInput);
+        let gen = flags_attribute::impl_flags(attr_meta, &input);
+        gen.into()
+    })
 }
 
 /// Derive macro for defining a GLib error domain and its associated
@@ -536,11 +535,12 @@ pub fn flags(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// [`ErrorDomain`]: ../glib/error/trait.ErrorDomain.html
 #[proc_macro_derive(ErrorDomain, attributes(error_domain))]
-#[proc_macro_error]
 pub fn error_domain_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let gen = error_domain_derive::impl_error_domain(&input);
-    gen.into()
+    crate::abort::guard(move || {
+        let input = parse_macro_input!(input as DeriveInput);
+        let gen = error_domain_derive::impl_error_domain(&input);
+        gen.into()
+    })
 }
 
 /// Derive macro for defining a [`BoxedType`]`::type_` function and
@@ -565,11 +565,12 @@ pub fn error_domain_derive(input: TokenStream) -> TokenStream {
 /// [`BoxedType`]: ../glib/subclass/boxed/trait.BoxedType.html
 /// [`glib::Value`]: ../glib/value/struct.Value.html
 #[proc_macro_derive(Boxed, attributes(boxed_type))]
-#[proc_macro_error]
 pub fn boxed_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let gen = boxed_derive::impl_boxed(&input);
-    gen.into()
+    crate::abort::guard(move || {
+        let input = parse_macro_input!(input as DeriveInput);
+        let gen = boxed_derive::impl_boxed(&input);
+        gen.into()
+    })
 }
 
 /// Derive macro for defining a [`SharedType`]`::get_type` function and
@@ -599,11 +600,12 @@ pub fn boxed_derive(input: TokenStream) -> TokenStream {
 /// [`SharedType`]: ../glib/subclass/shared/trait.SharedType.html
 /// [`glib::Value`]: ../glib/value/struct.Value.html
 #[proc_macro_derive(SharedBoxed, attributes(shared_boxed_type))]
-#[proc_macro_error]
 pub fn shared_boxed_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let gen = shared_boxed_derive::impl_shared_boxed(&input);
-    gen.into()
+    crate::abort::guard(move || {
+        let input = parse_macro_input!(input as DeriveInput);
+        let gen = shared_boxed_derive::impl_shared_boxed(&input);
+        gen.into()
+    })
 }
 
 /// Macro for boilerplate of [`ObjectSubclass`] implementations.
@@ -636,13 +638,11 @@ pub fn shared_boxed_derive(input: TokenStream) -> TokenStream {
 ///
 /// [`ObjectSubclass`]: ../glib/subclass/types/trait.ObjectSubclass.html
 #[proc_macro_attribute]
-#[proc_macro_error]
 pub fn object_subclass(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    use proc_macro_error::abort_call_site;
-    match syn::parse::<syn::ItemImpl>(item) {
+    crate::abort::guard(move || match syn::parse::<syn::ItemImpl>(item) {
         Ok(input) => object_subclass_attribute::impl_object_subclass(&input).into(),
-        Err(_) => abort_call_site!(object_subclass_attribute::WRONG_PLACE_MSG),
-    }
+        Err(_) => crate::abort::abort_call_site!(object_subclass_attribute::WRONG_PLACE_MSG),
+    })
 }
 
 /// Macro for boilerplate of [`ObjectInterface`] implementations.
@@ -661,13 +661,11 @@ pub fn object_subclass(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// [`ObjectInterface`]: ../glib/subclass/interface/trait.ObjectInterface.html
 #[proc_macro_attribute]
-#[proc_macro_error]
 pub fn object_interface(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    use proc_macro_error::abort_call_site;
-    match syn::parse::<syn::ItemImpl>(item) {
+    crate::abort::guard(move || match syn::parse::<syn::ItemImpl>(item) {
         Ok(input) => object_interface_attribute::impl_object_interface(&input).into(),
-        Err(_) => abort_call_site!(object_interface_attribute::WRONG_PLACE_MSG),
-    }
+        Err(_) => crate::abort::abort_call_site!(object_interface_attribute::WRONG_PLACE_MSG),
+    })
 }
 
 /// Macro for deriving implementations of [`glib::clone::Downgrade`] and
@@ -776,16 +774,16 @@ pub fn downgrade(input: TokenStream) -> TokenStream {
 /// enum variant, or just `s` if this is a C-style enum. Some additional attributes are supported
 /// for enums:
 /// - `#[variant_enum(repr)]` to serialize the enum variant as an integer type instead of `s`.  The
-/// `#[repr]` attribute must also be specified on the enum with a sized integer type, and the type
-/// must implement `Copy`.
+///   `#[repr]` attribute must also be specified on the enum with a sized integer type, and the type
+///   must implement `Copy`.
 /// - `#[variant_enum(enum)]` uses [`EnumClass`] to serialize/deserialize as nicks. Meant for use
-/// with [`glib::Enum`](Enum).
+///   with [`glib::Enum`](Enum).
 /// - `#[variant_enum(flags)]` uses [`FlagsClass`] to serialize/deserialize as nicks. Meant for use
-/// with [`glib::flags`](macro@flags).
+///   with [`glib::flags`](macro@flags).
 /// - `#[variant_enum(enum, repr)]` serializes as `i32`. Meant for use with [`glib::Enum`](Enum).
-/// The type must also implement `Copy`.
+///   The type must also implement `Copy`.
 /// - `#[variant_enum(flags, repr)]` serializes as `u32`. Meant for use with
-/// [`glib::flags`](macro@flags).
+///   [`glib::flags`](macro@flags).
 ///
 /// # Example
 ///
@@ -840,10 +838,11 @@ pub fn downgrade(input: TokenStream) -> TokenStream {
 /// [`FlagsClass`]: ../glib/struct.FlagsClass.html
 /// [kebab case]: https://docs.rs/heck/0.4.0/heck/trait.ToKebabCase.html
 #[proc_macro_derive(Variant, attributes(variant_enum))]
-#[proc_macro_error]
 pub fn variant_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    variant_derive::impl_variant(input)
+    crate::abort::guard(move || {
+        let input = parse_macro_input!(input as DeriveInput);
+        variant_derive::impl_variant(input)
+    })
 }
 #[proc_macro]
 pub fn cstr_bytes(item: TokenStream) -> TokenStream {
@@ -1024,13 +1023,11 @@ pub fn derive_props(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 #[proc_macro_attribute]
-#[proc_macro_error]
 pub fn derived_properties(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    use proc_macro_error::abort_call_site;
-    match syn::parse::<syn::ItemImpl>(item) {
+    crate::abort::guard(move || match syn::parse::<syn::ItemImpl>(item) {
         Ok(input) => derived_properties_attribute::impl_derived_properties(&input).into(),
-        Err(_) => abort_call_site!(derived_properties_attribute::WRONG_PLACE_MSG),
-    }
+        Err(_) => crate::abort::abort_call_site!(derived_properties_attribute::WRONG_PLACE_MSG),
+    })
 }
 
 /// # Example
